@@ -1,0 +1,40 @@
+#ifndef __TWOPC_SRVAPP_HPP__
+#define __TWOPC_SRVAPP_HPP__
+
+#include "twopc/trans.hpp"
+#include "twopc/tp.hpp"
+
+namespace twopc {
+
+/* server app, will start with a tp
+ */
+class SrvApp {
+  public:
+
+    SrvApp();
+
+    /**
+     * execute the transaction w/o commit,
+     * result true if transaction can be committed
+     */
+    virtual bool excute_callback(Trans::SubTrans& trans) = 0;
+
+    /**
+     * commit the transaction
+     */
+    virtual bool commit_callback(Trans::SubTrans& trans) = 0;
+
+    /**
+     * abor the transaction
+     */
+    virtual bool abort_callback(Trans::SubTrans& trans) = 0;
+
+    virtual ~SrvApp();
+
+  private:
+    TP* tp_;
+};
+
+}
+
+#endif
