@@ -89,6 +89,7 @@ Status Channel::recv(Buffer* buffer) {
 
     curr_len += len;
   }
+  buffer->reset();
   return Status();
 }
 

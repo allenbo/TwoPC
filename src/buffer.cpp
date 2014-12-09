@@ -50,7 +50,7 @@ size_t Buffer::write(Byte bytes[], size_t size) {
     cap_ = new_cap;
   }
 
-  memcpy((void*)bytes_, (void*)bytes, size);
+  memcpy((void*)(bytes_ + curr_pos_), (void*)bytes, size);
   curr_pos_ += size;
   size_ += size;
   return size;
@@ -59,7 +59,8 @@ size_t Buffer::write(Byte bytes[], size_t size) {
 size_t Buffer::writeUInt(unsigned int un) {
   size_t size = sizeof(un);
   for(size_t i = 0; i < size; i ++ ) {
-    writeByte((Byte)((un >> (size - 1 -i)) & 0xff));
+    Byte b = (Byte)((un >> ((size - 1 -i) * 8)) & 0xff);
+    writeByte(b);
   }
   return size;
 }
@@ -71,7 +72,7 @@ size_t Buffer::writeInt(int n) {
 size_t Buffer::writeULongInt(uint64_t uln) {
   size_t size = sizeof(uln);
   for(size_t i = 0; i < size; i ++ ) {
-    writeByte((Byte)((uln >> (size - 1 -i)) & 0xff));
+    writeByte((Byte)((uln >> ((size - 1 -i)*8)) & 0xff));
   }
   return size;
 }
@@ -96,10 +97,11 @@ Status Buffer::readByte(Byte* b) {
 }
 
 Status Buffer::read(Byte bytes[], size_t size) {
-  if(curr_pos_ + size >= size_) {
+  if(curr_pos_ + size > size_) {
     return Status(Status::Code::IO_EOF);
   }
   memcpy(bytes, bytes_ + curr_pos_, size);
+  curr_pos_ += size;
   return Status();
 }
 
@@ -115,7 +117,7 @@ Status Buffer::readUInt(unsigned int* un) {
       return st;
     }
     
-    *un |= (unsigned int)(b) << (size - 1 - i);
+    *un |= (unsigned int)(b) << ((size - 1 - i) * 8);
   }
   return Status();
 }
@@ -127,7 +129,7 @@ Status Buffer::readInt(int* n) {
 Status Buffer::readULongInt(uint64_t* uln) {
   *uln = 0;
   Status st;
-  size_t size = sizeof(uln);
+  size_t size = sizeof(uint64_t);
 
   for(size_t i = 0; i < size; i ++) {
     Byte b;
@@ -136,7 +138,7 @@ Status Buffer::readULongInt(uint64_t* uln) {
       return st;
     }
     
-    *uln |= (unsigned int)(b) << (size - 1 - i);
+    *uln |= (uint64_t)(b) << ((size - 1 - i) * 8);
   }
   return Status();
 }
