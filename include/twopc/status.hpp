@@ -10,6 +10,7 @@ class Status {
       OK,
 
       MAP_KEY_DUPLICATE,
+      MAP_KEY_MISSING,
 
       NET_TIMEOUT,
       NET_RD_ERROR,
@@ -19,6 +20,7 @@ class Status {
       NET_CNT_FAIL,
       NET_CLOSED,
       NET_BAD_ADDR,
+      NET_NOT_ALLOWED,
 
       IO_EOF,
       PROTO_ERROR,

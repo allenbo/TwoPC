@@ -1,4 +1,5 @@
 #include "twopc/networking/channel.hpp"
+#include "twopc/networking/monitor.hpp"
 #include "common/all.hpp"
 
 using namespace COMMON;
@@ -6,12 +7,25 @@ using namespace COMMON;
 namespace twopc {
 namespace networking {
 
-Channel::Channel()
-    :socket_(-1), addrinfo_(nullptr), alive_(false) {
+Channel::Channel(bool async)
+    :socket_(-1), addrinfo_(nullptr), alive_(false),
+     async_(async), handler_(nullptr),
+     read_packet_(nullptr), write_packet_(nullptr),
+     async_read_(false), read_waiter_(0),
+     async_read_mutex_(), async_read_cond_(&async_read_mutex_),
+     async_write_(false), write_waiter_(0),
+     async_write_mutex_(), async_write_cond_(&async_write_mutex_) {
 }
 
-Channel::Channel(std::string addr)
-    :socket_(-1), addrinfo_(nullptr), alive_(false) {
+Channel::Channel(std::string addr, bool async)
+    :socket_(-1), addrinfo_(nullptr), alive_(false),
+     async_(async), handler_(nullptr),
+     read_packet_(nullptr), write_packet_(nullptr),
+     async_read_(false), read_waiter_(0),
+     async_read_mutex_(), async_read_cond_(&async_read_mutex_),
+     async_write_(false), write_waiter_(0),
+     async_write_mutex_(), async_write_cond_(&async_write_mutex_) {
+
   std::vector<std::string> pair = VarString::split(addr, ":");
   CHECK_EQ(pair.size(), 2);
   CHECK_NE(pair[0], "");
@@ -45,6 +59,7 @@ Channel::~Channel() {
 }
 
 Status Channel::set_socket(int socket) {
+  ScopeLock _(&change_mutex_);
   if (socket == -1 || socket_ != -1) {
     return Status(Status::Code::NET_WRONG_SOCKET);
   }
@@ -53,7 +68,9 @@ Status Channel::set_socket(int socket) {
 }
 
 Status Channel::send(const Buffer& buffer) {
+  ScopeLock _(&change_mutex_);
   CHECK_NE(socket_, -1);
+  CHECK_NE(async_, true);
   packet p(buffer);
   
   while(true) {
@@ -69,7 +86,10 @@ Status Channel::send(const Buffer& buffer) {
 }
 
 Status Channel::recv(Buffer* buffer) {
+  ScopeLock _(&change_mutex_);
   CHECK_NE(socket_, -1);
+  CHECK_NE(async_, true);
+
   int total_len;
   int len = ::read(socket_, (char*)&total_len, sizeof(int));
 
@@ -93,16 +113,139 @@ Status Channel::recv(Buffer* buffer) {
   return Status();
 }
 
+Status Channel::isend(const Buffer& buffer) {
+  ScopeLock _(&async_write_mutex_);
+
+  write_waiter_ ++;
+  while (async_write_) {
+    async_write_cond_.wait();
+    if (!is_alive()) {
+      return Status(Status::Code::NET_CLOSED);
+    }
+  }
+  write_waiter_ --;
+
+  async_write_ = true;
+  write_packet_ = new packet(buffer);
+
+  write_pdu();
+  Monitor::get_instance()->watch_write(this);
+  return Status();
+}
+
+Status Channel::irecv() {
+  ScopeLock _(&async_read_mutex_);
+
+  read_waiter_ ++;
+  while (async_read_) {
+    async_read_cond_.wait(); 
+    if (!is_alive()) {
+      return Status(Status::Code::NET_CLOSED);
+    }
+  }
+  read_waiter_ --;
+
+  async_read_ = true;
+  read_packet_ = new packet();
+
+  Monitor::get_instance()->watch_read(this);
+  return Status();
+}
+
+Status Channel::read_pdu() {
+  CHECK_NOTNULL(read_packet_);
+
+  if (read_packet_->size == 0) {
+    int total_len;
+    int len = ::read(socket_, (char*)&total_len, sizeof(int));
+
+    if (len == 0){
+      on_async_close();
+      return Status(Status::Code::NET_CLOSED);
+    }
+
+    read_packet_->set_size(total_len);
+  }
+
+  size_t len = ::read(socket_, read_packet_->curr_bytes, read_packet_->remain_size());
+  if (len == 0){
+    on_async_close();
+    return Status(Status::Code::NET_CLOSED);
+  }
+  read_packet_->curr_bytes += len;
+
+  if (read_packet_->ready()) {
+    Buffer buffer = read_packet_->toBuffer();
+
+    Monitor::get_instance()->unwatch_read(this);
+    cleanup_read();
+
+    if (handler_) {
+      handler_->on_recv_complete(buffer);
+    }
+  }
+  return Status();
+}
+
+Status Channel::write_pdu() {
+  CHECK_NOTNULL(write_packet_);
+
+  size_t len = ::write(socket_, write_packet_->curr_bytes, write_packet_->remain_size());
+  write_packet_->curr_bytes += len;
+
+  if (write_packet_->ready()) {
+    Monitor::get_instance()->unwatch_write(this);
+    cleanup_read();
+
+    if (handler_) {
+      handler_->on_send_complete();
+    }
+  }
+  return Status();
+}
+
+void Channel::cleanup_read() {
+  CHECK_NOTNULL(read_packet_);
+  delete read_packet_;
+  read_packet_ = nullptr;
+
+  async_read_ = false;
+  async_read_cond_.notify_all();
+}
+
+void Channel::cleanup_write() {
+  CHECK_NOTNULL(write_packet_);
+  delete write_packet_;
+  write_packet_ = nullptr;
+
+  async_write_ = false;
+  async_write_cond_.notify_all();
+}
+
+void Channel::on_async_close() {
+  Monitor::get_instance()->unregister_channel(this);
+  cleanup_read();
+
+  if (handler_) {
+    handler_->on_channel_close(this);
+  }
+}
+
 Status Channel::connect() {
   /* if reconnect */
+  ScopeLock _(&change_mutex_);
   if (socket_ != -1) {
     ::close(socket_);
     socket_ = -1;
   }
 
+  if (addrinfo_ == nullptr) {
+    return Status(Status::Code::NET_NOT_ALLOWED);
+  }
+
   struct addrinfo * ptr = nullptr;
   for(ptr = addrinfo_; ptr != nullptr; ptr = ptr->ai_next) {
-    socket_ = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+    socket_ = ::socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
     if (socket_ == -1) {
       continue;
     }
@@ -119,11 +262,20 @@ Status Channel::connect() {
 }
 
 void Channel::close() {
+  ScopeLock _(&change_mutex_);
   if (alive_ && socket_ != -1) {
     ::close(socket_);
   }
   alive_ = false;
   socket_ = -1;
+}
+
+void Channel::set_async_handler(Asio* handler) {
+  CHECK(async_);
+  ScopeLock _(&change_mutex_);
+  nonblock_fd(socket_);
+  handler_ = handler;
+  Monitor::get_instance()->register_channel(this);
 }
 
 } // end of namespace networking

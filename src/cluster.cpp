@@ -16,15 +16,20 @@ CoordCluster::CoordCluster(Config& config) {
 
 CoordCluster::~CoordCluster() {
   delete acceptor_;
+  auto it = channels_.begin();
+  for(; it != channels_.end(); it ++) {
+    delete it->second;
+  }
+  channels_.clear();
 }
 
 Status CoordCluster::init() {
   while (channels_.size() != (size_t)size_) {
-    Channel chan;
-    Status st = acceptor_->accept(&chan);
+    Channel *chan = new Channel();
+    Status st = acceptor_->accept(chan);
 
     Buffer buffer;
-    st = chan.recv(&buffer);
+    st = chan->recv(&buffer);
     if (!st.ok()) {
       return st;
     }
@@ -48,7 +53,7 @@ Status CoordCluster::send(std::string& tag, const Buffer& buffer) {
   if (channels_.count(tag) == 0) {
     return Status(Status::Code::NET_WRONG_TAG);
   }
-  Channel& ch = channels_[tag];
+  Channel& ch = *channels_[tag];
   return ch.send(buffer);
 }
 
@@ -56,7 +61,7 @@ Status CoordCluster::recv(std::string& tag, Buffer* buffer) {
   if (channels_.count(tag) == 0) {
     return Status(Status::Code::NET_WRONG_TAG);
   }
-  Channel& ch = channels_[tag];
+  Channel& ch = *channels_[tag];
   return ch.recv(buffer);
 }
 
@@ -65,7 +70,7 @@ Status CoordCluster::broadcast(const Buffer& buffer) {
   Status st;
 
   for(; it != channels_.end(); it ++) {
-    st = it->second.send(buffer);
+    st = it->second->send(buffer);
     if (!st.ok()) {
       return st;
     }

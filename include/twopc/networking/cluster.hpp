@@ -43,7 +43,7 @@ class CoordCluster {
     inline bool is_ready() { return ready_; }
 
   private:
-    typedef std::map<std::string, Channel> TTChannel;
+    typedef std::map<std::string, Channel*> TTChannel;
 
     int       size_;
     bool      ready_;

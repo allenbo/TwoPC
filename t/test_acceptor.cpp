@@ -45,22 +45,5 @@ class Server : public Thread {
 
 int main() {
   Server server("8888");
-  server.start();
-
-  Channel ch("127.0.0.1:8888", false);
-  Buffer buffer;
-  Status st = ch.recv(&buffer);
-  assert(st.ok());
-
-  std::string msg;
-  st = buffer.readString(&msg);
-  assert(st.ok() && msg == stc_msg);
-
-  Buffer buffer2;
-  buffer2.writeString(std::string(cts_msg));
-
-  st = ch.send(buffer2);
-  assert(st.ok());
-  server.join();
-  return 0;
+  server.run();
 }
