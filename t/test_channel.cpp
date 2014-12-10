@@ -1,6 +1,7 @@
 #include "twopc/networking/channel.hpp"
 #include "twopc/networking/acceptor.hpp"
 #include "common/all.hpp"
+#include <iostream>
 
 using namespace COMMON;
 using twopc::Status;
@@ -10,7 +11,17 @@ using twopc::networking::Buffer;
 
 const char* stc_msg = "hello world";
 const char* cts_msg = "This is a message";
+const char* alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
+std::string rand_string(int len) {
+  char* arr = new char[len];
+  int total_len = strlen(alphabet);
+
+  for (int i = 0; i < len ; i ++) {
+    arr[i] = alphabet[rand() % total_len];
+  }
+  return std::string(arr);
+}
 class Server : public Thread {
   public:
     Server(std::string addr) {
@@ -44,23 +55,28 @@ class Server : public Thread {
 };
 
 int main() {
-  Server server("8888");
-  server.start();
+  //Server server("8888");
+  //server.start();
+  //
+
+  std::string bigmsg = rand_string(10*1000*1000);
 
   Channel ch("127.0.0.1:8888", false);
   Buffer buffer;
-  Status st = ch.recv(&buffer);
+  buffer.writeString(bigmsg);
+  Status st = ch.send(buffer);
+  std::cout << "Send out message to server" << std::endl;
   assert(st.ok());
-
-  std::string msg;
-  st = buffer.readString(&msg);
-  assert(st.ok() && msg == stc_msg);
 
   Buffer buffer2;
-  buffer2.writeString(std::string(cts_msg));
-
-  st = ch.send(buffer2);
+  st = ch.recv(&buffer2);
   assert(st.ok());
-  server.join();
+
+
+  std::string msg;
+  st = buffer2.readString(&msg);
+  assert(st.ok() && msg == bigmsg);
+
+  //server.join();
   return 0;
 }

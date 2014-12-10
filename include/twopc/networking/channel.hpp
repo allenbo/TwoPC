@@ -24,8 +24,8 @@ class Asio {
   public:
     virtual ~Asio(){}
 
-    virtual void on_recv_complete(Buffer buffer) = 0;
-    virtual void on_send_complete() = 0;
+    virtual void on_recv_complete(Channel*, Buffer buffer) {}
+    virtual void on_send_complete(Channel*) {}
     virtual void on_channel_close(Channel*) { };
 };
 
@@ -69,9 +69,10 @@ class Channel {
       }
 
       void set_size(size_t s) {
-        size = s;
+        size = s + sizeof(int);
         bytes = new char[s];
         *(int*)bytes = size;
+        curr_bytes = bytes;
         curr_bytes += sizeof(int);
       }
 
@@ -86,6 +87,7 @@ class Channel {
       Buffer toBuffer() {
         Buffer b;
         b.write((Buffer::Byte*)(bytes + sizeof(int)), size - sizeof(int));
+        b.reset();
         return b;
       }
 

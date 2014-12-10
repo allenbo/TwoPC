@@ -36,8 +36,6 @@ class Monitor: public COMMON::Thread {
     static Monitor *instance_;
     Pollable* poll_manager_;
 
-    RecursiveMutex mutex_;
-
     friend void init_monitor();
 };
 

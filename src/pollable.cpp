@@ -1,14 +1,19 @@
 #include "twopc/networking/pollable.hpp"
+#include "common/all.hpp"
+#include <iostream>
+
+using namespace COMMON;
 
 namespace twopc {
 namespace networking {
 
 SelectPoll::SelectPoll()
-    :highest_(0) {
+    :highest_(0), mutex_(){
 }
 
 void SelectPoll::watch(int fd, Pollable::MODE mod) {
   ScopeLock _(&mutex_);
+  LOG(DEBUG) << "watch " << fd << std::endl;
   if (mod == Pollable::MODE::READ) {
     FD_SET(fd, &read_set_);
   } else {
@@ -17,11 +22,13 @@ void SelectPoll::watch(int fd, Pollable::MODE mod) {
 
   if (fd > highest_) {
     highest_ = fd;
+    LOG(DEBUG) << "highest fd is " << highest_ << std::endl;
   }
 }
 
 void SelectPoll::unwatch(int fd, Pollable::MODE mod) {
   ScopeLock _(&mutex_);
+  LOG(DEBUG) << "unwatch " << fd << std::endl;
   if (mod == Pollable::MODE::READ) {
     FD_CLR(fd, &read_set_);
   } else  {
@@ -40,6 +47,7 @@ void SelectPoll::unwatch(int fd, Pollable::MODE mod) {
   }
 
   highest_ = new_highest;
+  LOG(DEBUG) << "highest fd is " << highest_ << std::endl;
 }
 
 bool SelectPoll::poll(std::vector<int>& reads, std::vector<int>& writes) {

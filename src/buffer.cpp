@@ -13,6 +13,14 @@ Buffer::Buffer()
      curr_pos_(0) {
 }
 
+Buffer::Buffer(const Buffer& o) {
+  bytes_ = new Byte[o.size_];
+  memcpy(bytes_, o.bytes_, o.size_);
+  curr_pos_ = o.curr_pos_;
+  cap_ = o.size_;
+  size_ = o.size_;
+}
+
 Buffer::Buffer(Byte *bytes, size_t size)
     :bytes_(new Byte[size]),
      cap_(size),

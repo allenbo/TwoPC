@@ -114,12 +114,13 @@ Status Channel::recv(Buffer* buffer) {
 }
 
 Status Channel::isend(const Buffer& buffer) {
-  ScopeLock _(&async_write_mutex_);
+  async_write_mutex_.lock(); // weird scope lock error
 
   write_waiter_ ++;
   while (async_write_) {
     async_write_cond_.wait();
     if (!is_alive()) {
+      async_write_mutex_.unlock();
       return Status(Status::Code::NET_CLOSED);
     }
   }
@@ -129,7 +130,10 @@ Status Channel::isend(const Buffer& buffer) {
   write_packet_ = new packet(buffer);
 
   write_pdu();
-  Monitor::get_instance()->watch_write(this);
+  if (write_packet_) {
+    Monitor::get_instance()->watch_write(this);
+  }
+  async_write_mutex_.unlock();
   return Status();
 }
 
@@ -165,6 +169,7 @@ Status Channel::read_pdu() {
     }
 
     read_packet_->set_size(total_len);
+    LOG(DEBUG) << read_packet_->size << std::endl;
   }
 
   size_t len = ::read(socket_, read_packet_->curr_bytes, read_packet_->remain_size());
@@ -173,6 +178,7 @@ Status Channel::read_pdu() {
     return Status(Status::Code::NET_CLOSED);
   }
   read_packet_->curr_bytes += len;
+  LOG(DEBUG) << "len " << len << " remain_size " << read_packet_->remain_size() << std::endl;
 
   if (read_packet_->ready()) {
     Buffer buffer = read_packet_->toBuffer();
@@ -181,7 +187,7 @@ Status Channel::read_pdu() {
     cleanup_read();
 
     if (handler_) {
-      handler_->on_recv_complete(buffer);
+      handler_->on_recv_complete(this, buffer);
     }
   }
   return Status();
@@ -195,10 +201,12 @@ Status Channel::write_pdu() {
 
   if (write_packet_->ready()) {
     Monitor::get_instance()->unwatch_write(this);
-    cleanup_read();
+    LOG(DEBUG) << "clean up write" << std::endl;
+    cleanup_write();
+    LOG(DEBUG) << "after clean up write" << std::endl;
 
     if (handler_) {
-      handler_->on_send_complete();
+      handler_->on_send_complete(this);
     }
   }
   return Status();
@@ -266,8 +274,14 @@ void Channel::close() {
   if (alive_ && socket_ != -1) {
     ::close(socket_);
   }
+
+  if (async_) {
+    Monitor::get_instance()->unregister_channel(this);
+  }
+
   alive_ = false;
   socket_ = -1;
+
 }
 
 void Channel::set_async_handler(Asio* handler) {

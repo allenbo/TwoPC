@@ -30,7 +30,7 @@ Monitor::~Monitor() {
 }
 
 Status Monitor::register_channel(Channel* ch) {
-  ScopeLock _(&mutex_);
+  LOG(DEBUG) << "register channel " << ch->socket() << std::endl;
   if (channels_.count(ch->socket()) != 0) {
     return Status(Status::Code::MAP_KEY_DUPLICATE);
   }
@@ -39,24 +39,18 @@ Status Monitor::register_channel(Channel* ch) {
 }
 
 Status Monitor::unregister_channel(Channel* ch) {
-  ScopeLock _(&mutex_);
+  LOG(DEBUG) << "unregister channel " << ch->socket() << std::endl;
   if (channels_.count(ch->socket()) == 0) {
     return Status(Status::Code::MAP_KEY_MISSING);
   }
-  Status st = unwatch_read(ch);
-  if (! st.ok()) {
-    return st;
-  }
-  st = unwatch_write(ch);
-  if (! st.ok()) { 
-    return st;
-  }
+  poll_manager_->unwatch(ch->socket(), Pollable::MODE::READ);
+  poll_manager_->unwatch(ch->socket(), Pollable::MODE::WRITE);
+
   channels_.erase(ch->socket());
   return Status();
 }
 
 Status Monitor::watch_read(Channel* ch) {
-  ScopeLock _(&mutex_);
   if (channels_.count(ch->socket()) == 0) {
     return Status(Status::Code::MAP_KEY_MISSING);
   }
@@ -65,7 +59,6 @@ Status Monitor::watch_read(Channel* ch) {
 }
 
 Status Monitor::watch_write(Channel* ch) {
-  ScopeLock _(&mutex_);
   if (channels_.count(ch->socket()) == 0) {
     return Status(Status::Code::MAP_KEY_MISSING);
   }
@@ -74,7 +67,6 @@ Status Monitor::watch_write(Channel* ch) {
 }
 
 Status Monitor::unwatch_read(Channel* ch) {
-  ScopeLock _(&mutex_);
   if (channels_.count(ch->socket()) == 0) {
     return Status(Status::Code::MAP_KEY_MISSING);
   }
@@ -83,7 +75,6 @@ Status Monitor::unwatch_read(Channel* ch) {
 }
 
 Status Monitor::unwatch_write(Channel* ch) {
-  ScopeLock _(&mutex_);
   if (channels_.count(ch->socket()) == 0) {
     return Status(Status::Code::MAP_KEY_MISSING);
   }
@@ -96,7 +87,6 @@ void Monitor::run() {
   std::vector<int> write_fds;
 
   while (true) {
-    ScopeLock _(&mutex_);
     if (channels_.size() == 0) {
       struct timespec ts;
       ts.tv_sec = 0;
@@ -115,6 +105,7 @@ void Monitor::run() {
       if (channels_.count(*it) == 0) {
         continue;
       }
+      LOG(DEBUG) << *it << " ready for read" << std::endl;
       channels_[*it]->read_pdu();
     }
 
@@ -122,6 +113,7 @@ void Monitor::run() {
       if (channels_.count(*it) == 0) {
         continue;
       }
+      LOG(DEBUG) << *it << " ready for write" << std::endl;
       channels_[*it]->write_pdu();
     }
   }

@@ -15,6 +15,7 @@ class Buffer {
     static const size_t MIN_BUFFER = 1024;
 
     Buffer();
+    Buffer(const Buffer& buffer);
     Buffer(Byte *bytes, size_t);
     ~Buffer();
 
