@@ -24,15 +24,18 @@ class TC {
 
     TC(Config& config);
 
+    Status set_key2tag(Trans::KeyToTag key2tag);
+
     /**
      * Excute a transaction
      */
-    Status excuteTrans(Trans& trans);
+    Status excuteTrans(Trans& trans, VoteResult* rst);
 
   private:
 
     Mutex inproc_mutex_;
     CoordCluster networking_;
+    Trans::KeyToTag key2tag_;
 
     /**
      * propose transaction to tp and get voting result

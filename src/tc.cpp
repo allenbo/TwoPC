@@ -3,24 +3,31 @@
 namespace twopc {
 
 TC::TC(Config& config)
-    :inproc_mutex_(), networking_(config) {
+    :inproc_mutex_(), networking_(config), key2tag_(nullptr) {
   Status st = networking_.init();
   CHECK(st.ok());
 }
 
-Status TC::excuteTrans(Trans& trans) {
+Status TC::set_key2tag(Trans::KeyToTag key2tag) {
+  if (key2tag_) {
+    return Status(Status::Code::HANDLER_EXIST);
+  }
+  key2tag_ = key2tag;
+  return Status();
+}
+
+Status TC::excuteTrans(Trans& trans, VoteResult* rst) {
   ScopeLock _(&inproc_mutex_);
 
-  auto subtranss = trans.split();
+  auto subtranss = trans.split(key2tag_);
   
-  VoteResult rst;
-  Status st = propose(subtranss, &rst);
+  Status st = propose(subtranss, rst);
 
   if (!st.ok()) {
     return st;
   }
 
-  return decide(rst);
+  return decide(*rst);
 }
 
 

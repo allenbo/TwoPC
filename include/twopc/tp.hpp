@@ -27,12 +27,14 @@ class TP {
 
     Status loop();
 
+    Status stop();
 
   private:
 
-    SrvApp* handler_;
+    SrvApp      *handler_;
     std::string tag_;
     PartCluster networking_;
+    bool        stop_;
 
     /**
      * catch transaction

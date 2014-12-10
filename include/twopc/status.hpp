@@ -9,6 +9,8 @@ class Status {
     enum class Code {
       OK,
 
+      HANDLER_EXIST,
+
       MAP_KEY_DUPLICATE,
       MAP_KEY_MISSING,
 

@@ -6,12 +6,20 @@ namespace twopc {
 using networking::Buffer;
 
 TP::TP(std::string tag, Config& config)
-    :handler_(nullptr), tag_(tag), networking_(tag, config) {
+    :handler_(nullptr), tag_(tag), networking_(tag, config), stop_(false){
+}
+
+Status TP::register_handler(SrvApp* handler) {
+  if (handler_) {
+    return Status(Status::Code::HANDLER_EXIST);
+  }
+  handler_ = handler;
+  return Status();
 }
 
 Status TP::loop() {
   Status st;
-  while (true) {
+  while (!stop_) {
     Trans::SubTrans subtrans;
     st = catch_subtrans(&subtrans);
     if (!st.ok()) {
@@ -38,6 +46,11 @@ Status TP::loop() {
     }
   }
   return st;
+}
+
+Status TP::stop() {
+  stop_ = true;
+  return Status();
 }
 
 Status TP::catch_subtrans(Trans::SubTrans* trans) {

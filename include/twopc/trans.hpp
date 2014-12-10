@@ -19,6 +19,7 @@ typedef uint64_t TID;
 class Trans {
   public:
 
+    typedef std::string (*KeyToTag) (std::string);
     /* sub transactions
      */
     class SubTrans {
@@ -31,6 +32,7 @@ class Trans {
 
         inline bool isvalid() { return tid_ != 0; }
         inline std::string tag() { return tag_; }
+        inline TID tid() { return tid_; }
 
         /**
          * append command to this sub transaction
@@ -58,16 +60,26 @@ class Trans {
     /**
      * Add a new command to transaction
      */
-    Status append(std::string tag, std::string command);
+    Status append(std::string key, std::string command);
 
     /**
      * split transaction to sub transactions based on tag
      */
-    std::vector<SubTrans> split();
+    std::vector<SubTrans> split(KeyToTag key2tag = nullptr);
+
+    /**
+     * Serialize to a networking buffer
+     */
+    Buffer toBuffer();
+
+    /**
+     * Deserialiaze from a networking buffer
+     */
+    Status fromBuffer(Buffer& buffer);
 
   private:
 
-    std::vector<std::string> tags_;
+    std::vector<std::string> keys_;
     std::vector<std::string> commands_;
     
     TID tid_;
