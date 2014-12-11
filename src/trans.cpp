@@ -1,7 +1,10 @@
 #include "twopc/trans.hpp"
+#include "common/all.hpp"
 
 #include <vector>
 #include <map>
+
+using namespace COMMON;
 
 namespace twopc {
 
@@ -72,6 +75,19 @@ Status Trans::SubTrans::fromBuffer(Buffer& buffer) {
   tag_ = tag;
   tid_ = tid;
   return st;
+}
+
+Trans::Trans()
+    :keys_(), commands_(), tid_(0) {
+}
+
+Status Trans::set_tid(TID tid) {
+  CHECK(tid != 0);
+  if (tid_ != 0) {
+    return Status(Status::Code::HANDLER_EXIST);
+  }
+  tid_ = tid;
+  return Status();
 }
 
 Status Trans::append(std::string key, std::string command) {

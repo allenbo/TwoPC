@@ -178,17 +178,16 @@ Status Channel::read_pdu() {
     return Status(Status::Code::NET_CLOSED);
   }
   read_packet_->curr_bytes += len;
-  LOG(DEBUG) << "len " << len << " remain_size " << read_packet_->remain_size() << std::endl;
 
   if (read_packet_->ready()) {
     Buffer buffer = read_packet_->toBuffer();
 
     Monitor::get_instance()->unwatch_read(this);
-    cleanup_read();
 
     if (handler_) {
       handler_->on_recv_complete(this, buffer);
     }
+    cleanup_read();
   }
   return Status();
 }
@@ -201,13 +200,11 @@ Status Channel::write_pdu() {
 
   if (write_packet_->ready()) {
     Monitor::get_instance()->unwatch_write(this);
-    LOG(DEBUG) << "clean up write" << std::endl;
-    cleanup_write();
-    LOG(DEBUG) << "after clean up write" << std::endl;
 
     if (handler_) {
       handler_->on_send_complete(this);
     }
+    cleanup_write();
   }
   return Status();
 }

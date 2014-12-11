@@ -57,6 +57,11 @@ class Trans {
 
     };
 
+    Trans();
+
+    Status set_tid(TID tid_);
+    inline TID tid() { return tid_; }
+
     /**
      * Add a new command to transaction
      */

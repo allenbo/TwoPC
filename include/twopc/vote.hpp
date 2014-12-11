@@ -2,6 +2,7 @@
 #define __TWOPC_VOTE_HPP__
 
 #include "twopc/status.hpp"
+#include "twopc/trans.hpp"
 #include "twopc/networking/buffer.hpp"
 
 #include <vector>
@@ -18,7 +19,7 @@ class Vote {
   public:
 
     Vote();
-    Vote(bool);
+    Vote(bool, TID tid);
 
     /**
      * Serialize to a networking buffer
@@ -30,14 +31,18 @@ class Vote {
      */
     Status fromBuffer(Buffer& buffer);
 
+    inline TID tid() { return tid_; }
+
   private:
     bool vote_;
+    TID  tid_;
 };
 
 class VoteResult {
   public:
 
     VoteResult();
+    VoteResult(TID tid);
 
     inline bool commit() { return commit_; }
 
@@ -56,9 +61,12 @@ class VoteResult {
      */
     static Status parse_votes(std::vector<Vote>& votes, VoteResult* rst);
 
+    inline TID tid() { return tid_; }
+
   private:
 
     bool commit_;
+    TID  tid_;
 };
 
 }

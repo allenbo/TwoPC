@@ -44,7 +44,7 @@ class TP {
     /**
      * send back to tc the vote
      */
-    Status vote(bool);
+    Status vote(bool, TID tid);
 
     /**
      * catch vote result from tc

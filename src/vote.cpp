@@ -6,12 +6,13 @@ Vote::Vote()
     :vote_(false) {
 }
 
-Vote::Vote(bool v)
-    :vote_(v) {
+Vote::Vote(bool v, TID tid)
+    :vote_(v), tid_(tid) {
 }
 
 Buffer Vote::toBuffer() {
   Buffer buffer;
+  buffer.writeULongInt(tid_);
   if (vote_) {
     buffer.writeString("yes");
   } else {
@@ -21,8 +22,16 @@ Buffer Vote::toBuffer() {
 }
 
 Status Vote::fromBuffer(Buffer& buffer) {
+  TID tid;
+  Status st;
+
+  st = buffer.readULongInt(&tid);
+  if (!st.ok()) {
+    return st;
+  }
+
   std::string vs;
-  Status st = buffer.readString(&vs);
+  st = buffer.readString(&vs);
   if (!st.ok()) {
     return st;
   }
@@ -37,11 +46,16 @@ Status Vote::fromBuffer(Buffer& buffer) {
 }
 
 VoteResult::VoteResult()
-    :commit_(false) {
+    :VoteResult(0) {
+}
+
+VoteResult::VoteResult(TID tid)
+    :commit_(false), tid_(tid) {
 }
 
 Buffer VoteResult::toBuffer() {
   Buffer buffer;
+  buffer.writeULongInt(tid_);
   if (commit_) {
     buffer.writeString("commit");
   } else {
@@ -52,8 +66,16 @@ Buffer VoteResult::toBuffer() {
 }
 
 Status VoteResult::fromBuffer(Buffer& buffer) {
+  TID tid;
+  Status st;
+
+  st = buffer.readULongInt(&tid);
+  if (!st.ok()) {
+    return st;
+  }
+
   std::string vs;
-  Status st = buffer.readString(&vs);
+  st = buffer.readString(&vs);
   if (!st.ok()) {
     return st;
   }

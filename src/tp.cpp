@@ -28,7 +28,7 @@ Status TP::loop() {
 
     bool v = handler_->excute_callback(subtrans);
     
-    st = vote(v);
+    st = vote(v, subtrans.tid());
     if (!st.ok()) {
       return st;
     }
@@ -66,9 +66,9 @@ Status TP::catch_subtrans(Trans::SubTrans* trans) {
   return st;
 }
 
-Status TP::vote(bool v) {
+Status TP::vote(bool v, TID tid) {
   Status st;
-  Buffer buffer = Vote(v).toBuffer();
+  Buffer buffer = Vote(v, tid).toBuffer();
 
   st = networking_.send(buffer);
   return st; 
