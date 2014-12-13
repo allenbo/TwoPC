@@ -6,7 +6,8 @@ namespace twopc {
 
 Clt::Clt(std::string addr)
     :ch_(nullptr), count_(0), mutex_(), cond_(&mutex_) {
-  ch_ = new Channel(true);
+  ch_ = new Channel(addr, true);
+  ch_->set_async_handler(this);
 }
 
 Request Clt::excute_trans(Trans& trans) {
@@ -24,7 +25,6 @@ Request Clt::excute_trans(Trans& trans) {
 }
 
 void Clt::on_send_complete(Channel* ch) {
-  trans_states_[count_] = TransState::RECVING;
   ch_->irecv();
 }
 
@@ -33,6 +33,7 @@ void Clt::on_recv_complete(Channel* ch, Buffer buffer) {
   VoteResult rst;
   rst.fromBuffer(buffer);
 
+  LOG(DEBUG) << "Get vote result for " << rst.tid() << ":" << rst.commit() << std::endl;
   trans_states_[rst.tid()] = TransState::FINISHED;
   trans_results_[rst.tid()] = rst;
   cond_.notify_all();
@@ -59,8 +60,10 @@ Status Request::wait(VoteResult* rst) {
   }
 
   *rst = clt_->trans_results_[tid_];
+  CHECK_EQ(tid_, rst->tid());
   clt_->trans_states_.erase(tid_);
   clt_->trans_results_.erase(tid_);
+  LOG(DEBUG) << "Transaction " << tid_ << " got the result " << rst->commit() << std::endl;
   return Status();
 }
 

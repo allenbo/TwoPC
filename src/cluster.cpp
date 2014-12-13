@@ -44,8 +44,10 @@ Status CoordCluster::init() {
     CHECK_EQ(channels_.count(tag), 0);
 
     channels_[tag] = chan;
+    LOG(DEBUG) << "Cluster received connection from " << tag << std::endl;
   }
   ready_ = true;
+  LOG(DEBUG) << "Cluster ready" << std::endl;
   return Status();
 }
 

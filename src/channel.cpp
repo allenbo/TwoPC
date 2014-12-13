@@ -30,6 +30,7 @@ Channel::Channel(std::string addr, bool async)
   CHECK_EQ(pair.size(), 2);
   CHECK_NE(pair[0], "");
   CHECK_NE(pair[1], "");
+  LOG(DEBUG) << "Host:port " << pair[0] << ":" << pair[1] << std::endl;
 
   std::string host = pair[0];
   std::string port = pair[1];
@@ -46,6 +47,7 @@ Channel::Channel(std::string addr, bool async)
            0);
   Status st = connect();
   CHECK(st.ok());
+  LOG(DEBUG) << "Connected" << std::endl;
   alive_ = true;
 }
 
@@ -64,6 +66,7 @@ Status Channel::set_socket(int socket) {
     return Status(Status::Code::NET_WRONG_SOCKET);
   }
   socket_ = socket;
+  LOG(DEBUG) << "Set socket to " << socket_ << std::endl;
   return Status();
 }
 
@@ -82,6 +85,7 @@ Status Channel::send(const Buffer& buffer) {
     }
   }
 
+  LOG(DEBUG) << "Channel " << socket_ << " Sent out message with length [" << buffer.size() << "]" << std::endl;
   return Status();
 }
 
@@ -109,6 +113,7 @@ Status Channel::recv(Buffer* buffer) {
 
     curr_len += len;
   }
+  LOG(DEBUG) << "Channel " << socket_ << " Received a message with length [" << buffer->size() << "]" << std::endl;
   buffer->reset();
   return Status();
 }
@@ -126,6 +131,7 @@ Status Channel::isend(const Buffer& buffer) {
   }
   write_waiter_ --;
 
+  LOG(DEBUG) << "Channel " << socket_ << " Isenting a message with length [" << buffer.size() << "]" << std::endl;
   async_write_ = true;
   write_packet_ = new packet(buffer);
 
@@ -149,6 +155,7 @@ Status Channel::irecv() {
   }
   read_waiter_ --;
 
+  LOG(DEBUG) << "Channel " << socket_ << " Irecv a message" << std::endl;
   async_read_ = true;
   read_packet_ = new packet();
 
@@ -181,13 +188,14 @@ Status Channel::read_pdu() {
 
   if (read_packet_->ready()) {
     Buffer buffer = read_packet_->toBuffer();
+    LOG(DEBUG) << "Channel " << socket_ << " Irecved a message with length [" << buffer.size() << "]" << std::endl;
 
     Monitor::get_instance()->unwatch_read(this);
 
+    cleanup_read();
     if (handler_) {
       handler_->on_recv_complete(this, buffer);
     }
-    cleanup_read();
   }
   return Status();
 }
@@ -200,11 +208,12 @@ Status Channel::write_pdu() {
 
   if (write_packet_->ready()) {
     Monitor::get_instance()->unwatch_write(this);
+    LOG(DEBUG) << "Channel " << socket_ << " Isent a message" << std::endl;
 
+    cleanup_write();
     if (handler_) {
       handler_->on_send_complete(this);
     }
-    cleanup_write();
   }
   return Status();
 }
@@ -240,6 +249,7 @@ Status Channel::connect() {
   /* if reconnect */
   ScopeLock _(&change_mutex_);
   if (socket_ != -1) {
+    LOG(DEBUG) << "Reconnect ..." << std::endl;
     ::close(socket_);
     socket_ = -1;
   }

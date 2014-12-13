@@ -19,6 +19,7 @@ Status TC::set_key2tag(Trans::KeyToTag key2tag) {
 Status TC::excuteTrans(Trans& trans, VoteResult* rst) {
   ScopeLock _(&inproc_mutex_);
 
+  LOG(DEBUG) << "Get a new transaction " << trans.tid() << std::endl;
   auto subtranss = trans.split(key2tag_);
   
   Status st = propose(subtranss, rst);
@@ -36,6 +37,7 @@ Status TC::propose(SubTransVec& subtranss, VoteResult * rst) {
   std::vector<Vote> votes;
   for(auto& subtrans: subtranss) {
     std::string tag = subtrans.tag();
+    LOG(DEBUG) << "Tag:" << tag << std::endl;
     st = networking_.send(tag, subtrans.toBuffer());
     if (!st.ok()) {
       return st;
@@ -52,6 +54,7 @@ Status TC::propose(SubTransVec& subtranss, VoteResult * rst) {
     if (!st.ok()) {
       return st;
     }
+    LOG(DEBUG) << "Get vote " << vote.vote() << " for " << vote.tid() << " from tag " << tag << std::endl;
 
     votes.push_back(vote);
   }

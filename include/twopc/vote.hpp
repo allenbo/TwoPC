@@ -32,6 +32,7 @@ class Vote {
     Status fromBuffer(Buffer& buffer);
 
     inline TID tid() { return tid_; }
+    inline bool vote() { return vote_; }
 
   private:
     bool vote_;
@@ -62,6 +63,7 @@ class VoteResult {
     static Status parse_votes(std::vector<Vote>& votes, VoteResult* rst);
 
     inline TID tid() { return tid_; }
+    inline void set_tid(TID tid) { tid_ = tid; }
 
   private:
 

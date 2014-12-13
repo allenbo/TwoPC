@@ -26,7 +26,6 @@ class Clt : public Asio {
 
     enum class TransState {
       SENDING,
-      RECVING,
       FINISHED,
     };
 

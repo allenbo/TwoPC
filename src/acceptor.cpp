@@ -25,6 +25,7 @@ Acceptor::Acceptor(std::string addr)
 
   CHECK_EQ(::bind(socket_, addrinfo_->ai_addr, addrinfo_->ai_addrlen), 0);
   CHECK_EQ(::listen(socket_, 128), 0);
+  LOG(DEBUG) << "Listening at port " << addr << std::endl;
 }
 
 Acceptor::~Acceptor() {
@@ -36,6 +37,7 @@ Status Acceptor::accept(Channel* ch) {
   struct sockaddr_in client_info;
   socklen_t client_len = sizeof(struct sockaddr_in);
   int client_sock = ::accept(socket_, (struct sockaddr*) &client_info, &client_len);
+  LOG(DEBUG) << "Accepted a new channel " << client_sock << std::endl;
 
   ch->set_socket(client_sock);
   ch->set_alive();

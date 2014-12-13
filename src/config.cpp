@@ -29,9 +29,6 @@ Status Config::add_part(std::string tag, std::string addr) {
 }
 
 Status Config::set_coord(std::string addr) {
-   if (addr.find(':') == std::string::npos) {
-    return Status(Status::Code::NET_BAD_ADDR);
-  }
   coord_addr_ = addr;
   return Status();
 }

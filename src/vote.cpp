@@ -1,4 +1,7 @@
 #include "twopc/vote.hpp"
+#include "common/all.hpp"
+
+using namespace COMMON;
 
 namespace twopc {
 
@@ -42,6 +45,7 @@ Status Vote::fromBuffer(Buffer& buffer) {
   } else {
     st = Status(Status::Code::PROTO_ERROR);
   }
+  tid_ = tid;
   return st;
 }
 
@@ -86,16 +90,23 @@ Status VoteResult::fromBuffer(Buffer& buffer) {
   } else {
     st = Status(Status::Code::PROTO_ERROR);
   }
+  tid_ = tid;
   return st;
 }
 
 Status VoteResult::parse_votes(std::vector<Vote>& votes, VoteResult* rst) {
+  CHECK(votes.size() >= 1);
+  TID tid = votes[0].tid();
+  LOG(DEBUG) << "Set the tid of vote result to " << tid << std::endl;
+  rst->set_tid(tid);
+
   Status st;
   bool commit = true;
   for(auto& v : votes) {
     if (v.vote_ == false) {
       commit = false;
     }
+    CHECK(v.tid() == tid);
   }
   rst->commit_ = commit;
   return st;

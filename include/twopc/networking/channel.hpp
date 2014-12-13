@@ -69,11 +69,15 @@ class Channel {
       }
 
       void set_size(size_t s) {
+        if (bytes != nullptr) {
+          delete bytes;
+          bytes = nullptr;
+          size = 0;
+        }
         size = s + sizeof(int);
-        bytes = new char[s];
+        bytes = new char[size];
         *(int*)bytes = size;
-        curr_bytes = bytes;
-        curr_bytes += sizeof(int);
+        curr_bytes = bytes + sizeof(int);
       }
 
       inline size_t remain_size() {

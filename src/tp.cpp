@@ -25,6 +25,7 @@ Status TP::loop() {
     if (!st.ok()) {
       return st;
     }
+    LOG(DEBUG) << "Catch subtrans " << subtrans.tid() << std::endl;
 
     bool v = handler_->excute_callback(subtrans);
     

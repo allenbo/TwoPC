@@ -30,10 +30,12 @@ void Srv::stop() {
 }
 
 void Srv::on_send_complete(Channel* ch) {
+  LOG(DEBUG) << "In on_send_complete@server" << std::endl;
   ch->irecv();
 }
 
 void Srv::on_recv_complete(Channel* ch, Buffer buffer) {
+  LOG(DEBUG) << "In on_recv_complete@server" << std::endl;
   Trans trans;
   trans.fromBuffer(buffer);
 
